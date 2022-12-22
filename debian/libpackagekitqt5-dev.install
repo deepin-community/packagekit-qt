@@ -1,0 +1,4 @@
+usr/include/packagekitqt5/*
+usr/lib/*/cmake/packagekitqt5
+usr/lib/*/libpackagekitqt5.so
+usr/lib/*/pkgconfig/packagekitqt5.pc

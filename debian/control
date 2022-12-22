@@ -1,0 +1,42 @@
+Source: packagekit-qt
+Section: libs
+Priority: optional
+Maintainer: Matthias Klumpp <mak@debian.org>
+Build-Depends: cmake (>= 3.2),
+               debhelper-compat (= 12),
+               packagekit (>= 1.1.12),
+               pkg-config (>= 0.26),
+               pkg-kde-tools (>= 0.15.16),
+               qtbase5-dev (>= 5.8)
+Standards-Version: 4.5.0
+Rules-Requires-Root: no
+Homepage: https://www.freedesktop.org/software/PackageKit/
+Vcs-Git: https://salsa.debian.org/pkgutopia-team/packagekit-qt.git
+Vcs-Browser: https://salsa.debian.org/pkgutopia-team/packagekit-qt
+
+Package: libpackagekitqt5-1
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Suggests: packagekit
+Description: Library for accessing PackageKit using Qt5
+ PackageKit allows performing simple software management tasks over a DBus
+ interface e.g. refreshing the cache, updating, installing and removing
+ software packages or searching for multimedia codecs and file handlers.
+ .
+ This package provides a library to access PackageKit using Qt.
+
+Package: libpackagekitqt5-dev
+Section: libdevel
+Architecture: any
+Depends: libpackagekitqt5-1 (= ${binary:Version}),
+         qtbase5-dev (>= 5.8),
+         ${misc:Depends}
+Description: Library for accessing PackageKit using Qt5 (development files)
+ PackageKit allows performing simple software management tasks over a DBus
+ interface e.g. refreshing the cache, updating, installing and removing
+ software packages or searching for multimedia codecs and file handlers.
+ .
+ This package provides the header files for PackageKit-Qt.

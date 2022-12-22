@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+
+QPK_CONFIGURE_ARGS =
+
+%:
+	dh $@ --with kf5
+
+override_dh_auto_configure:
+	dh_auto_configure -- $(QPK_CONFIGURE_ARGS)
+
+override_dh_missing:
+	dh_missing --fail-missing
