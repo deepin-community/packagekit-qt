@@ -31,7 +31,7 @@ Offline::Offline(QObject *parent) : QObject(parent)
                                          DBUS_PROPERTIES,
                                          QLatin1String("PropertiesChanged"),
                                          this,
-                                         SLOT(propertiesChanged(QString,QVariantMap,QStringList)));
+                                         SLOT(updateProperties(QString,QVariantMap,QStringList)));
 }
 
 Offline::~Offline()
@@ -92,7 +92,15 @@ QDBusPendingReply<> Offline::trigger(Action action)
     };
     Q_ASSERT(!actionStr.isEmpty());
 
-    return d->iface.Trigger(actionStr);
+    // Manually invoke dbus because the qdbusxml2cpp does not allow
+    // setting the ALLOW_INTERACTIVE_AUTHORIZATION flag
+    auto msg = QDBusMessage::createMethodCall(PK_NAME,
+                                              PK_PATH,
+                                              PK_OFFLINE_INTERFACE,
+                                              QStringLiteral("Trigger"));
+    msg << actionStr;
+    msg.setInteractiveAuthorizationAllowed(true);
+    return QDBusConnection::systemBus().asyncCall(msg);
 }
 
 QDBusPendingReply<> Offline::triggerUpgrade(Action action)
@@ -112,19 +120,39 @@ QDBusPendingReply<> Offline::triggerUpgrade(Action action)
     };
     Q_ASSERT(!actionStr.isEmpty());
 
-    return d->iface.TriggerUpgrade(actionStr);
+    // Manually invoke dbus because the qdbusxml2cpp does not allow
+    // setting the ALLOW_INTERACTIVE_AUTHORIZATION flag
+    auto msg = QDBusMessage::createMethodCall(PK_NAME,
+                                              PK_PATH,
+                                              PK_OFFLINE_INTERFACE,
+                                              QStringLiteral("TriggerUpgrade"));
+    msg << actionStr;
+    msg.setInteractiveAuthorizationAllowed(true);
+    return QDBusConnection::systemBus().asyncCall(msg, 24 * 60 * 1000 * 1000);
 }
 
 QDBusPendingReply<> Offline::cancel()
 {
-    Q_D(Offline);
-    return d->iface.Cancel();
+    // Manually invoke dbus because the qdbusxml2cpp does not allow
+    // setting the ALLOW_INTERACTIVE_AUTHORIZATION flag
+    auto msg = QDBusMessage::createMethodCall(PK_NAME,
+                                              PK_PATH,
+                                              PK_OFFLINE_INTERFACE,
+                                              QStringLiteral("Cancel"));
+    msg.setInteractiveAuthorizationAllowed(true);
+    return QDBusConnection::systemBus().asyncCall(msg);
 }
 
 QDBusPendingReply<> Offline::clearResults()
 {
-    Q_D(Offline);
-    return d->iface.ClearResults();
+    // Manually invoke dbus because the qdbusxml2cpp does not allow
+    // setting the ALLOW_INTERACTIVE_AUTHORIZATION flag
+    auto msg = QDBusMessage::createMethodCall(PK_NAME,
+                                              PK_PATH,
+                                              PK_OFFLINE_INTERFACE,
+                                              QStringLiteral("ClearResults"));
+    msg.setInteractiveAuthorizationAllowed(true);
+    return QDBusConnection::systemBus().asyncCall(msg);
 }
 
 void Offline::getPrepared()
@@ -145,7 +173,7 @@ void Offline::getPrepared()
     });
 }
 
-void OfflinePrivate::updateProperties(const QVariantMap &properties)
+void OfflinePrivate::initializeProperties(const QVariantMap &properties)
 {
     Q_Q(Offline);
 
@@ -182,6 +210,20 @@ void OfflinePrivate::updateProperties(const QVariantMap &properties)
     if (!properties.isEmpty()) {
         q->changed();
     }
+}
+
+void OfflinePrivate::updateProperties(const QString &interface, const QVariantMap &properties, const QStringList &invalidate)
+{
+    if(interface != PK_OFFLINE_INTERFACE) {
+        qCWarning(PACKAGEKITQT_OFFLINE) << "Cannot process" << interface << "as" << PK_OFFLINE_INTERFACE;
+        return;
+    }
+
+    if (!invalidate.isEmpty()) {
+        qCWarning(PACKAGEKITQT_OFFLINE) << "Properties could not be invalidated" << interface << invalidate;
+    }
+
+    initializeProperties(properties);
 }
 
 #include "moc_offline.cpp"

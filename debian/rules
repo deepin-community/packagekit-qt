@@ -1,12 +1,24 @@
 #!/usr/bin/make -f
 
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
 QPK_CONFIGURE_ARGS =
 
 %:
-	dh $@ --with kf5
+	dh $@ --with kf5,pkgkde_symbolshelper
 
 override_dh_auto_configure:
-	dh_auto_configure -- $(QPK_CONFIGURE_ARGS)
+	dh_auto_configure --buildsystem=kf5 -- $(QPK_CONFIGURE_ARGS)
+	dh_auto_configure --buildsystem=kf6 --builddirectory=build-qt6 -- $(QPK_CONFIGURE_ARGS) -DBUILD_WITH_QT6=ON
 
-override_dh_missing:
-	dh_missing --fail-missing
+override_dh_auto_build:
+	dh_auto_build --buildsystem=kf5
+	dh_auto_build --buildsystem=kf6 --builddirectory=build-qt6
+
+override_dh_auto_test:
+	dh_auto_test --buildsystem=kf5
+	dh_auto_test --buildsystem=kf6 --builddirectory=build-qt6
+
+override_dh_auto_install:
+	dh_auto_install --buildsystem=kf5
+	dh_auto_install --buildsystem=kf6 --builddirectory=build-qt6

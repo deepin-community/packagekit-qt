@@ -1,0 +1,4 @@
+usr/include/packagekitqt6/*
+usr/lib/*/cmake/packagekitqt6/
+usr/lib/*/libpackagekitqt6.so
+usr/lib/*/pkgconfig/packagekitqt6.pc

@@ -1,1 +1,2 @@
-usr/lib/*/libpackagekitqt5.so.*
+usr/lib/*/libpackagekitqt5.so.1
+usr/lib/*/libpackagekitqt5.so.1.*

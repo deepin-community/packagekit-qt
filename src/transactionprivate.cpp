@@ -49,9 +49,9 @@ void TransactionPrivate::setup(const QDBusObjectPath &transactionId)
                                                          tid.path(),
                                                          QDBusConnection::systemBus(),
                                                          q);
-    if (!Daemon::global()->hints().isEmpty()) {
-        q->setHints(Daemon::global()->hints());
-    }
+    QStringList hints = this->hints ? *this->hints : Daemon::global()->hints();
+    hints << QStringLiteral("supports-plural-signals=true");
+    q->setHints(hints);
 
     q->connect(p, SIGNAL(Destroy()), SLOT(destroy()));
 
@@ -185,9 +185,14 @@ void TransactionPrivate::runQueuedTransaction()
         reply = p->UpgradeSystem(transactionFlags, upgradeDistroId, upgradeKind);
         break;
     default:
-        break;
+        return;
     }
 
+    if (reply.isFinished() && reply.isError()) {
+        q->errorCode(Transaction::ErrorInternalError, reply.error().message());
+        finished(Transaction::ExitFailed, 0);
+        return;
+    }
     auto watcher = new QDBusPendingCallWatcher(reply, q);
     q->connect(watcher, &QDBusPendingCallWatcher::finished,
                q, [this, q] (QDBusPendingCallWatcher *call) {
@@ -286,40 +291,43 @@ void TransactionPrivate::updateProperties(const QVariantMap &properties)
         const QVariant &value = it.value();
         if (property == QLatin1String("AllowCancel")) {
             allowCancel = value.toBool();
-            QMetaObject::invokeMethod(q, "allowCancelChanged", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(q, &Transaction::allowCancelChanged, Qt::QueuedConnection);
         } else if (property == QLatin1String("CallerActive")) {
             callerActive = value.toBool();
-            QMetaObject::invokeMethod(q, "isCallerActiveChanged", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(q, &Transaction::isCallerActiveChanged, Qt::QueuedConnection);
         } else if (property == QLatin1String("DownloadSizeRemaining")) {
             downloadSizeRemaining = value.toLongLong();
-            QMetaObject::invokeMethod(q, "downloadSizeRemainingChanged", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(q, &Transaction::downloadSizeRemainingChanged, Qt::QueuedConnection);
         } else if (property == QLatin1String("ElapsedTime")) {
             elapsedTime = value.toUInt();
-            QMetaObject::invokeMethod(q, "elapsedTimeChanged", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(q, &Transaction::elapsedTimeChanged, Qt::QueuedConnection);
         } else if (property == QLatin1String("LastPackage")) {
             lastPackage = value.toString();
-            QMetaObject::invokeMethod(q, "lastPackageChanged", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(q, &Transaction::lastPackageChanged, Qt::QueuedConnection);
         } else if (property == QLatin1String("Percentage")) {
             percentage = value.toUInt();
-            QMetaObject::invokeMethod(q, "percentageChanged", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(q, &Transaction::percentageChanged, Qt::QueuedConnection);
         } else if (property == QLatin1String("RemainingTime")) {
             remainingTime = value.toUInt();
             q->remainingTimeChanged();
         } else if (property == QLatin1String("Role")) {
             role = static_cast<Transaction::Role>(value.toUInt());
-            QMetaObject::invokeMethod(q, "roleChanged", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(q, &Transaction::roleChanged, Qt::QueuedConnection);
         } else if (property == QLatin1String("Speed")) {
             speed = value.toUInt();
-            QMetaObject::invokeMethod(q, "speedChanged", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(q, &Transaction::speedChanged, Qt::QueuedConnection);
         } else if (property == QLatin1String("Status")) {
             status = static_cast<Transaction::Status>(value.toUInt());
-            QMetaObject::invokeMethod(q, "statusChanged", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(q, &Transaction::statusChanged, Qt::QueuedConnection);
         } else if (property == QLatin1String("TransactionFlags")) {
             transactionFlags = static_cast<Transaction::TransactionFlags>(value.toUInt());
-            QMetaObject::invokeMethod(q, "transactionFlagsChanged", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(q, &Transaction::transactionFlagsChanged, Qt::QueuedConnection);
         } else if (property == QLatin1String("Uid")) {
             uid = value.toUInt();
-            QMetaObject::invokeMethod(q, "uidChanged", Qt::QueuedConnection);
+            QMetaObject::invokeMethod(q, &Transaction::uidChanged, Qt::QueuedConnection);
+        } else if (property == QLatin1String("Sender")) {
+            senderName = value.toString();
+            QMetaObject::invokeMethod(q, &Transaction::senderNameChanged, Qt::QueuedConnection);
         } else {
             qCWarning(PACKAGEKITQT_TRANSACTION) << "Unknown Transaction property:" << property << value;
         }
@@ -334,6 +342,14 @@ void TransactionPrivate::Package(uint info, const QString &pid, const QString &s
     q->package(static_cast<Transaction::Info>(info),
                pid,
                summary);
+}
+
+void TransactionPrivate::Packages(const QList<PackageKit::PkPackage> &pkgs)
+{
+    Q_Q(Transaction);
+    for (PkPackage const &pkg : pkgs) {
+        q->package(static_cast<Transaction::Info>(pkg.info), pkg.pid, pkg.summary);
+    }
 }
 
 void TransactionPrivate::ItemProgress(const QString &itemID, uint status, uint percentage)
@@ -377,6 +393,7 @@ void TransactionPrivate::transaction(const QDBusObjectPath &oldTid,
                                      uint duration,
                                      const QString &data,
                                      uint uid,
+                                     const QString &senderName,
                                      const QString &cmdline)
 {
     Q_Q(Transaction);
@@ -389,6 +406,7 @@ void TransactionPrivate::transaction(const QDBusObjectPath &oldTid,
     priv->duration = duration;
     priv->data = data;
     priv->uid = uid;
+    priv->senderName = senderName;
     priv->cmdline = cmdline;
 
     auto transaction = new Transaction(priv);
@@ -423,4 +441,23 @@ void TransactionPrivate::UpdateDetail(const QString &package_id,
                     static_cast<PackageKit::Transaction::UpdateState>(state),
                     QDateTime::fromString(issued, Qt::ISODate),
                     QDateTime::fromString(updated, Qt::ISODate));
+}
+
+void TransactionPrivate::UpdateDetails(const QList<PkDetail> &details)
+{
+    Q_Q(Transaction);
+    for (const PkDetail &detail : details) {
+        q->updateDetail(detail.package_id,
+                        detail.updates,
+                        detail.obsoletes,
+                        detail.vendor_urls,
+                        detail.bugzilla_urls,
+                        detail.cve_urls,
+                        static_cast<PackageKit::Transaction::Restart>(detail.restart),
+                        detail.update_text,
+                        detail.changelog,
+                        static_cast<PackageKit::Transaction::UpdateState>(detail.state),
+                        QDateTime::fromString(detail.issued, Qt::ISODate),
+                        QDateTime::fromString(detail.updated, Qt::ISODate));
+    }
 }
