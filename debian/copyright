@@ -27,23 +27,23 @@ License: LGPL-2+
  On Debian systems, the complete text of the GNU Lesser General
  Public License version 2 can be found in "/usr/share/common-licenses/LGPL-2".
 
-Files: ./src/daemon.cpp
- ./src/daemonprivate.cpp
- ./src/daemonprivate.h
- ./src/transaction.cpp
- ./src/transactionprivate.cpp
- ./src/transactionprivate.h
+Files: src/daemon.cpp
+ src/daemonprivate.cpp
+ src/daemonprivate.h
+ src/transaction.cpp
+ src/transactionprivate.cpp
+ src/transactionprivate.h
 Copyright: 2008, Adrien Bustany <madcat@mymadcat.com>
   2010-2011, Daniel Nicoletti <dantti12@gmail.com>
 License: LGPL-2+
 
-Files: ./src/daemon.h
- ./src/transaction.h
+Files: src/daemon.h
+ src/transaction.h
 Copyright: 2008, Adrien Bustany <madcat@mymadcat.com>
   2010-2012, Daniel Nicoletti <dantti12@gmail.com>
 License: LGPL-2+
 
-Files: ./src/common.h
+Files: src/common.h
 Copyright: 2008, Adrien Bustany <madcat@mymadcat.com>
 License: LGPL-2+
 

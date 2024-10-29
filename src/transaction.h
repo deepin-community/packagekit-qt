@@ -34,6 +34,8 @@
 namespace PackageKit {
 
 class Details;
+struct PkPackage;
+struct PkDetail;
 
 /**
 * \class Transaction transaction.h Transaction
@@ -72,6 +74,7 @@ class PACKAGEKITQT_LIBRARY Transaction : public QObject
     Q_PROPERTY(uint duration READ duration)
     Q_PROPERTY(QString data READ data)
     Q_PROPERTY(uint uid READ uid NOTIFY uidChanged)
+    Q_PROPERTY(QString senderName READ senderName NOTIFY senderNameChanged)
     Q_PROPERTY(QString cmdline READ cmdline)
 public:
     /**
@@ -458,7 +461,12 @@ public:
         InfoDecompressing,
         InfoUntrusted,
         InfoTrusted,
-        InfoUnavailable
+        InfoUnavailable,
+        InfoCritical,
+        InfoInstall,
+        InfoRemove,
+        InfoObsolete,
+        InfoDowngrade
     };
     Q_ENUM(Info)
 
@@ -611,6 +619,13 @@ public:
     uint uid() const;
 
     /**
+     * Returns the D-Bus name of the calling process
+     * \return the unique D-Bus name of the calling process
+     * \note This function only returns a usable value for ongoing transactions
+     */
+    QString senderName() const;
+
+    /**
      * Returns the command line for the calling process
      * \return a string of the command line for the calling process
      * \note This function only returns a real value for old transactions returned by getOldTransactions
@@ -624,11 +639,14 @@ public:
      * the package manager which can change as the transaction runs.
      *
      * This method can be sent before the transaction has been run
-     * (by using Daemon::setHints) or whilst it is running
-     * (by using Transaction::setHints).
+     * or whilst it is running. If it is used before the transaction has
+     * been run, the return value is meaningless: the \p hints will be
+     * applied upon starting the transaction.
      * There is no limit to the number of times this
      * method can be sent, although some backends may only use the values
      * that were set before the transaction was started.
+     * This method will override the global hints previously set by
+     * Daemon::setHints, that are otherwise used by default.
      *
      * The \p hints can be filled with entries like these
      * ('locale=en_GB.utf8','idle=true','interactive=false').
@@ -694,6 +712,8 @@ Q_SIGNALS:
     void transactionFlagsChanged();
 
     void uidChanged();
+
+    void senderNameChanged();
 
     /**
      * \brief Sends a category
@@ -855,11 +875,13 @@ private:
     Q_PRIVATE_SLOT(d_func(), void mediaChangeRequired(uint mediaType, const QString &mediaId, const QString &mediaText))
     Q_PRIVATE_SLOT(d_func(), void finished(uint exitCode, uint runtime))
     Q_PRIVATE_SLOT(d_func(), void Package(uint info, const QString &pid, const QString &summary))
+    Q_PRIVATE_SLOT(d_func(), void Packages(QList<PackageKit::PkPackage>))
     Q_PRIVATE_SLOT(d_func(), void ItemProgress(const QString &itemID, uint status, uint percentage))
     Q_PRIVATE_SLOT(d_func(), void RepoSignatureRequired(const QString &pid, const QString &repoName, const QString &keyUrl, const QString &keyUserid, const QString &keyId, const QString &keyFingerprint, const QString &keyTimestamp, uint type))
     Q_PRIVATE_SLOT(d_func(), void requireRestart(uint type, const QString &pid))
-    Q_PRIVATE_SLOT(d_func(), void transaction(const QDBusObjectPath &oldTid, const QString &timespec, bool succeeded, uint role, uint duration, const QString &data, uint uid, const QString &cmdline))
+    Q_PRIVATE_SLOT(d_func(), void transaction(const QDBusObjectPath &oldTid, const QString &timespec, bool succeeded, uint role, uint duration, const QString &data, uint uid, const QString &senderName, const QString &cmdline))
     Q_PRIVATE_SLOT(d_func(), void UpdateDetail(const QString &package_id, const QStringList &updates, const QStringList &obsoletes, const QStringList &vendor_urls, const QStringList &bugzilla_urls, const QStringList &cve_urls, uint restart, const QString &update_text, const QString &changelog, uint state, const QString &issued, const QString &updated))
+    Q_PRIVATE_SLOT(d_func(), void UpdateDetails(const QList<PackageKit::PkDetail> &dets))
     Q_PRIVATE_SLOT(d_func(), void destroy())
     Q_PRIVATE_SLOT(d_func(), void daemonQuit())
     Q_PRIVATE_SLOT(d_func(), void propertiesChanged(QString,QVariantMap,QStringList))
