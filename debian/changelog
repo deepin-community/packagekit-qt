@@ -1,3 +1,9 @@
+packagekit-qt (1.1.2-1deepin1) unstable; urgency=medium
+
+  * Rebuild packages
+
+ -- lichenggang <lichenggang@uniontech.com>  Thu, 06 Aug 2026 15:42:04 +0800
+
 packagekit-qt (1.1.2-1) unstable; urgency=medium
 
   * New upstream version: 1.1.2
